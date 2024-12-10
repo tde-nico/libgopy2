@@ -1,0 +1,1 @@
+TEST = "Globals are good"
