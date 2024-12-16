@@ -1,4 +1,4 @@
-package libgopy
+package libgopy2
 
 /*
 #cgo CFLAGS: -I/usr/include/python3.10 -I/usr/include/python3.10
@@ -14,13 +14,13 @@ import (
 
 var funcs map[string]*C.PyObject
 
-func init() {
+func Init() {
 	C.Py_Initialize()
 	cbytes := C.CString("import sys; sys.path.insert(0, '.')")
 	defer C.free(unsafe.Pointer(cbytes))
 	C.PyRun_SimpleString(cbytes)
 
-	Load("libtests.test_script2")
+	funcs = make(map[string]*C.PyObject)
 }
 
 func Finalize() {
@@ -52,7 +52,6 @@ func Load(module string) error {
 		return fmt.Errorf("failed to get size of dir of module: %s", module)
 	}
 
-	funcs = make(map[string]*C.PyObject)
 	for i := range int(size) {
 		item := C.PyList_GetItem(dir, C.Py_ssize_t(i))
 		if item == nil {
@@ -64,7 +63,7 @@ func Load(module string) error {
 			return fmt.Errorf("failed to convert item to string from dir of module: %s", module)
 		}
 
-		if itemStr == nil || C.GoString(itemStr)[0] == '_' {
+		if C.GoString(itemStr)[0] == '_' {
 			continue
 		}
 
@@ -113,6 +112,16 @@ func setupArgs(args []any) (*C.PyObject, error) {
 			obj = C.PyFloat_FromDouble(C.double(v))
 		case float32:
 			obj = C.PyFloat_FromDouble(C.double(v))
+		case bool:
+			if v {
+				obj = C.Py_True
+			} else {
+				obj = C.Py_False
+			}
+			C.Py_IncRef(obj)
+		case nil:
+			obj = C.Py_None
+			C.Py_IncRef(obj)
 		case []uint8:
 			cstr := C.CBytes(v)
 			defer C.free(unsafe.Pointer(cstr))
@@ -121,6 +130,36 @@ func setupArgs(args []any) (*C.PyObject, error) {
 			cstr := C.CString(v)
 			defer C.free(unsafe.Pointer(cstr))
 			obj = C.PyUnicode_FromString(cstr)
+		case []any:
+			list := C.PyList_New(C.Py_ssize_t(len(v)))
+			if list == nil {
+				return nil, fmt.Errorf("failed to create list")
+			}
+			for i, item := range v {
+				pyItem, err := setupArgs([]any{item})
+				if err != nil {
+					return nil, err
+				}
+				C.PyList_SetItem(list, C.Py_ssize_t(i), C.PyTuple_GetItem(pyItem, 0))
+			}
+			obj = list
+		case map[any]any:
+			dict := C.PyDict_New()
+			if dict == nil {
+				return nil, fmt.Errorf("failed to create dict")
+			}
+			for key, value := range v {
+				pyKey, err := setupArgs([]any{key})
+				if err != nil {
+					return nil, err
+				}
+				pyValue, err := setupArgs([]any{value})
+				if err != nil {
+					return nil, err
+				}
+				C.PyDict_SetItem(dict, C.PyTuple_GetItem(pyKey, 0), C.PyTuple_GetItem(pyValue, 0))
+			}
+			obj = dict
 		default:
 			return nil, fmt.Errorf("unknown type: %T", v)
 		}
@@ -153,6 +192,12 @@ func parsePyObject(obj *C.PyObject) (any, error) {
 		return int64(C.PyLong_AsLong(obj)), nil
 	case "float":
 		return float64(C.PyFloat_AsDouble(obj)), nil
+	case "bool":
+		if obj == C.Py_True {
+			return true, nil
+		} else {
+			return false, nil
+		}
 	case "str":
 		return C.GoString(C.PyUnicode_AsUTF8(obj)), nil
 	case "bytes":
@@ -181,6 +226,42 @@ func parsePyObject(obj *C.PyObject) (any, error) {
 			tuple[i] = parsedItem
 		}
 		return tuple, nil
+	case "dict":
+		size := C.PyDict_Size(obj)
+		dict := make(map[any]any)
+		keys := C.PyDict_Keys(obj)
+		for i := range int(size) {
+			key := C.PyList_GetItem(keys, C.Py_ssize_t(i))
+			value := C.PyDict_GetItem(obj, key)
+			parsedKey, err := parsePyObject(key)
+			if err != nil {
+				return nil, err
+			}
+			parsedValue, err := parsePyObject(value)
+			if err != nil {
+				return nil, err
+			}
+			dict[parsedKey] = parsedValue
+		}
+		return dict, nil
+	case "set":
+		size := C.PySet_Size(obj)
+		set := make(map[any]bool, size)
+		iter := C.PyObject_GetIter(obj)
+		for range int(size) {
+			item := C.PyIter_Next(iter)
+			if item == nil {
+				break
+			}
+			parsedItem, err := parsePyObject(item)
+			if err != nil {
+				return nil, err
+			}
+			set[parsedItem] = true
+		}
+		return set, nil
+	case "NoneType":
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported type: %s", typeGoStr)
 	}
