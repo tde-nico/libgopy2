@@ -23,6 +23,11 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Load failed: %v", err)
 		t.FailNow()
 	}
+	err = Load("libtests.test_script5")
+	if err != nil {
+		t.Errorf("Load failed: %v", err)
+		t.FailNow()
+	}
 
 	res1, err := Call("func6")
 	if err != nil {
@@ -175,7 +180,25 @@ func TestLibgopy(t *testing.T) {
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
-	fmt.Printf("res14: %+v\n", res14)
+	tmp5 := fmt.Sprintf("%+v", res14)
+	out4 := "map[1:true 2:true 3:true 4:true]"
+	if tmp5 != out4 {
+		t.Errorf("Call failed: %v != %v", tmp5, out4)
+	}
+
+	res15, err := Call("create_pyobj", "Hello World!")
+	if err != nil {
+		t.Errorf("Call failed: %v", err)
+	}
+	res16, err := Call("test_pyobj", res15)
+	if err != nil {
+		t.Errorf("Call failed: %v", err)
+	}
+	tmp6 := fmt.Sprintf("%+v", res16)
+	out5 := "Hello World!"
+	if tmp6 != out5 {
+		t.Errorf("Call failed: %v != %v", tmp6, out5)
+	}
 
 	Finalize()
 }
