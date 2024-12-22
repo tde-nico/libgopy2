@@ -160,6 +160,8 @@ func setupArgs(args []any) (*C.PyObject, error) {
 				C.PyDict_SetItem(dict, C.PyTuple_GetItem(pyKey, 0), C.PyTuple_GetItem(pyValue, 0))
 			}
 			obj = dict
+		case *C.PyObject:
+			obj = v
 		default:
 			return nil, fmt.Errorf("unknown type: %T", v)
 		}
@@ -263,7 +265,7 @@ func parsePyObject(obj *C.PyObject) (any, error) {
 	case "NoneType":
 		return nil, nil
 	default:
-		return nil, fmt.Errorf("unsupported type: %s", typeGoStr)
+		return obj, nil
 	}
 }
 
