@@ -1,9 +1,8 @@
 package libgopy2
 
-/*
-#cgo pkg-config: python-3.12-embed
-#include <Python.h>
-*/
+//go:generate go run gen_flags.go --auto
+
+//#include <Python.h>
 import "C"
 import (
 	"fmt"
