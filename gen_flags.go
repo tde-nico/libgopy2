@@ -1,5 +1,10 @@
 //go:build ignore
 
+/*
+Author: @bynect 2025
+Description: Automatically generates cgo directives for embedding CPython
+*/
+
 package main
 
 import (
@@ -22,8 +27,8 @@ func genFlags(file string, cflags string, ldflags string) error {
 package libgopy2
 
 /*
-cgo CFLAGS: %s
-cgo LDFLAGS: %s
+#cgo CFLAGS: %s
+#cgo LDFLAGS: %s
 */
 import "C"
 `
@@ -45,18 +50,24 @@ func listVersions() string {
 
 	for _, line := range lines {
 		parts := strings.Fields(line)
+		if len(parts) == 0 {
+			continue
+		}
 
-		if len(parts) > 0 && strings.HasPrefix(parts[0], "python") {
-			if ver == "" {
+		if strings.HasPrefix(parts[0], "python") {
+			if parts[0] == "python3-embed" {
+				ver = "3"
+			} else if ver == "" {
 				ver = strings.TrimPrefix(parts[0], "python-")
 				ver = strings.TrimSuffix(ver, "-embed")
 			}
+
 			fmt.Print("\t")
 			fmt.Println(parts[0])
 		}
 	}
 
-	fmt.Println("Not all versions may be listed, you can still try it")
+	fmt.Println("Not all versions may be listed, they may still be found by the tool")
 	fmt.Println("Ignore the duplicates with the `-embed` suffix")
 	fmt.Println()
 
@@ -71,6 +82,8 @@ func validVer(ver string) bool {
 			}
 		}
 		return ver[0] == '3' && ver[1] == '.'
+	} else {
+		return ver == "3" // special case
 	}
 	return false
 }
@@ -98,18 +111,27 @@ func main() {
 		auto = true
 	}
 
-	ver := listVersions()
+	defVer := listVersions()
+	ver := defVer
 
 	for ok := !auto; ok; ok = !validVer(ver) {
-		fmt.Print("Enter the version number (eg 3.12): ")
-		fmt.Scanln(&ver)
+		fmt.Printf("Enter the version number [%s]: ", ver)
+		if _, err := fmt.Scanln(&ver); err != nil {
+			if err.Error() == "unexpected newline" {
+				ver = defVer
+			} else {
+				panic(err)
+			}
+		}
 		ver = strings.TrimSpace(ver)
 	}
 
+	sep := "-"
+	if ver == "3" {
+		sep = ""
+	}
+	libname := fmt.Sprintf("python%s%s-embed", sep, ver)
 	command := fmt.Sprintf("python%s-config", ver)
-	libname := fmt.Sprintf("python-%s-embed", ver)
-
-	fmt.Println(libname)
 
 	if ver == "" {
 		fmt.Println("Valid python version not found")
@@ -121,6 +143,8 @@ func main() {
 	}
 
 	fmt.Printf("Selected version %s\n", ver)
+	fmt.Printf("Corresponding pkg-config entry: %s\n", libname)
+	fmt.Println()
 
 	if !cmdExists(command) {
 		fmt.Printf("Command %s not found, falling back to pkg-config\n", command)

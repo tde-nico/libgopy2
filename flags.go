@@ -3,7 +3,7 @@
 package libgopy2
 
 /*
-cgo CFLAGS: -I/usr/include/python3.13 -I/usr/include/python3.13
-cgo LDFLAGS: -lpython3.13 -ldl  -lm
+#cgo CFLAGS: -I/usr/include/python3.13 -I/usr/include/python3.13
+#cgo LDFLAGS: -lpython3.13 -ldl  -lm
 */
 import "C"
