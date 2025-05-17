@@ -1,8 +1,7 @@
 package libgopy2
 
 /*
-#cgo CFLAGS: -I/usr/include/python3.10 -I/usr/include/python3.10
-#cgo LDFLAGS: -L/usr/lib/python3.10/config-3.10-x86_64-linux-gnu -L/usr/lib/x86_64-linux-gnu -lcrypt -ldl -lm -lm -lpython3.10
+#cgo pkg-config: python-3.12-embed
 #include <Python.h>
 */
 import "C"
