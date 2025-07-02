@@ -6,26 +6,45 @@ package libgopy2
 import "C"
 import (
 	"fmt"
+	"runtime"
 	"strings"
+	"sync"
 	"unsafe"
 )
 
-var funcs map[string]*C.PyObject
+type Python struct {
+	sync.RWMutex
+	funcs map[string]*C.PyObject
+}
 
-func Init() {
+func (p *Python) InitUnsafe() {
 	C.Py_Initialize()
 	cbytes := C.CString("import sys; sys.path.insert(0, '.')")
 	defer C.free(unsafe.Pointer(cbytes))
 	C.PyRun_SimpleString(cbytes)
-
-	funcs = make(map[string]*C.PyObject)
+	p.Lock()
+	p.funcs = make(map[string]*C.PyObject)
+	p.Unlock()
 }
 
-func Finalize() {
+func (p *Python) Init() {
+	p.InitUnsafe()
+	C.PyEval_SaveThread()
+}
+
+func (p *Python) FinalizeUnsafe() {
 	C.Py_Finalize()
 }
 
-func Load(module string) error {
+func (p *Python) Finalize() {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	C.PyGILState_Ensure()
+
+	p.FinalizeUnsafe()
+}
+
+func (p *Python) LoadUnsafe(module string) error {
 	cstr := C.CString(module)
 	defer C.free(unsafe.Pointer(cstr))
 
@@ -61,7 +80,8 @@ func Load(module string) error {
 			return fmt.Errorf("failed to convert item to string from dir of module: %s", module)
 		}
 
-		if C.GoString(itemStr)[0] == '_' {
+		itemGoStr := C.GoString(itemStr)
+		if itemGoStr[0] == '_' {
 			continue
 		}
 
@@ -70,10 +90,21 @@ func Load(module string) error {
 			return fmt.Errorf("failed to get attribute from module: %s", module)
 		}
 
-		funcs[C.GoString(itemStr)] = f
+		p.Lock()
+		p.funcs[itemGoStr] = f
+		p.Unlock()
 	}
 
 	return nil
+}
+
+func (p *Python) Load(module string) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	GIL := C.PyGILState_Ensure()
+	defer C.PyGILState_Release(GIL)
+
+	return p.LoadUnsafe(module)
 }
 
 func setupArgs(args []any) (*C.PyObject, error) {
@@ -267,11 +298,14 @@ func parsePyObject(obj *C.PyObject) (any, error) {
 	}
 }
 
-func Call(name string, args ...any) (any, error) {
-	f, ok := funcs[name]
+func (p *Python) CallUnsafe(name string, args ...any) (any, error) {
+	p.RLock()
+	f, ok := p.funcs[name]
 	if !ok {
+		p.RUnlock()
 		return nil, fmt.Errorf("function not found: %s", name)
 	}
+	p.RUnlock()
 
 	pyArgs, err := setupArgs(args)
 	if err != nil {
@@ -289,4 +323,13 @@ func Call(name string, args ...any) (any, error) {
 	}
 
 	return ret, nil
+}
+
+func (p *Python) Call(name string, args ...any) (any, error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	GIL := C.PyGILState_Ensure()
+	defer C.PyGILState_Release(GIL)
+
+	return p.CallUnsafe(name, args...)
 }

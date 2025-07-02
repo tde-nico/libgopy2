@@ -6,30 +6,31 @@ import (
 )
 
 func TestLibgopy(t *testing.T) {
-	Init()
+	p := &Python{}
+	p.Init()
 
-	err := Load("libtests.test_script1")
+	err := p.Load("libtests.test_script1")
 	if err != nil {
 		t.Errorf("Load failed: %v", err)
 		t.FailNow()
 	}
-	err = Load("libtests.test_script2")
+	err = p.Load("libtests.test_script2")
 	if err != nil {
 		t.Errorf("Load failed: %v", err)
 		t.FailNow()
 	}
-	err = Load("libtests.test_script4")
+	err = p.Load("libtests.test_script4")
 	if err != nil {
 		t.Errorf("Load failed: %v", err)
 		t.FailNow()
 	}
-	err = Load("libtests.test_script5")
+	err = p.Load("libtests.test_script5")
 	if err != nil {
 		t.Errorf("Load failed: %v", err)
 		t.FailNow()
 	}
 
-	res1, err := Call("func6")
+	res1, err := p.Call("func6")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res1, 3.14)
 	}
 
-	res2, err := Call("func1")
+	res2, err := p.Call("func1")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -45,7 +46,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res2, 4)
 	}
 
-	res3, err := Call("func5")
+	res3, err := p.Call("func5")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -54,7 +55,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res3, res3_test)
 	}
 
-	res4, err := Call("func7", 6.5, 10.0, 9.7, 8.2)
+	res4, err := p.Call("func7", 6.5, 10.0, 9.7, 8.2)
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -62,7 +63,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res4, 6.5)
 	}
 
-	res5, err := Call("func7", 6, 10, 9, 8)
+	res5, err := p.Call("func7", 6, 10, 9, 8)
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res5, 6)
 	}
 
-	res6, err := Call("func7", "Hello", "World", "Go", "Python")
+	res6, err := p.Call("func7", "Hello", "World", "Go", "Python")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res6, "Hello")
 	}
 
-	res7, err := Call("func7", []byte("Hello"), []byte("World"), []byte("Go"), []byte("Python"))
+	res7, err := p.Call("func7", []byte("Hello"), []byte("World"), []byte("Go"), []byte("Python"))
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -87,7 +88,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res7, res7_test)
 	}
 
-	res8, err := Call("func7", 6.5, 10, "Hello", []byte("World"), int64(3))
+	res8, err := p.Call("func7", 6.5, 10, "Hello", []byte("World"), int64(3))
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res8, 6.5)
 	}
 
-	res9, err := Call("func7",
+	res9, err := p.Call("func7",
 		float64(71.5), float32(3.14),
 		int64(3), int32(4), int16(5), int8(6), int(10),
 		uint64(3), uint32(4), uint16(5), uint8(6), uint(10),
@@ -114,7 +115,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", res9, 71.5)
 	}
 
-	res10, err := Call("func_list", 777, "Hello", 1.1, []byte("World"))
+	res10, err := p.Call("func_list", 777, "Hello", 1.1, []byte("World"))
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -138,7 +139,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", tmp[3], "World")
 	}
 
-	res11, err := Call("func_dict")
+	res11, err := p.Call("func_dict")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", tmp2, out)
 	}
 
-	res12, err := Call("func_tuple", nil)
+	res12, err := p.Call("func_tuple", nil)
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestLibgopy(t *testing.T) {
 		"key5": []any{1, nil, 0},
 		"key6": true,
 	}
-	res13, err := Call("func_arg", arg)
+	res13, err := p.Call("func_arg", arg)
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -176,7 +177,7 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", tmp4, out3)
 	}
 
-	res14, err := Call("func_set")
+	res14, err := p.Call("func_set")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -186,11 +187,11 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", tmp5, out4)
 	}
 
-	res15, err := Call("create_pyobj", "Hello World!")
+	res15, err := p.Call("create_pyobj", "Hello World!")
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
-	res16, err := Call("test_pyobj", res15)
+	res16, err := p.Call("test_pyobj", res15)
 	if err != nil {
 		t.Errorf("Call failed: %v", err)
 	}
@@ -200,13 +201,20 @@ func TestLibgopy(t *testing.T) {
 		t.Errorf("Call failed: %v != %v", tmp6, out5)
 	}
 
-	Finalize()
+	p.Finalize()
 }
 
 func BenchmarkLibgopy(b *testing.B) {
+	p := &Python{}
+	p.Init()
+	err := p.Load("libtests.test_script2")
+	if err != nil {
+		b.Errorf("Load failed: %v", err)
+		return
+	}
 	var res any
 	for n := 0; n < b.N; n++ {
-		res, _ = Call("func8",
+		res, _ = p.Call("func8",
 			[]byte("Hello"),
 			[]byte("World"),
 			[]byte("Go"),
@@ -217,8 +225,9 @@ func BenchmarkLibgopy(b *testing.B) {
 			[]byte("Python"),
 		)
 		if string(res.([]uint8)) != "olleH" {
-			b.Errorf("Call_byte failed: %v != %v",
-				res, "olleH")
+			b.Errorf("Call_byte failed: %v != %v", res, "olleH")
+			return
 		}
 	}
+	p.Finalize()
 }
